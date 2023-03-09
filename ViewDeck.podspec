@@ -28,7 +28,7 @@ Pod::Spec.new do |s|
                   :tag => s.version.to_s
                 }
   s.source_files  = 'ViewDeck/**/*.{h,m,mm}'
-  s.private_header_files = 'ViewDeck/Private/*.h', 'ViewDeck/**/*+Private.h'
+#  s.private_header_files = 'ViewDeck/Private/*.h', 'ViewDeck/**/*+Private.h'
   s.library = 'c++'
   s.frameworks    = 'Foundation', 'UIKit', 'QuartzCore'
   s.requires_arc  = true

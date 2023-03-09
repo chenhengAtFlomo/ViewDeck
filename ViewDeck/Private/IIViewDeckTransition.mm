@@ -184,20 +184,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)updateInteractiveTransition:(UIGestureRecognizer *)recognizer {
     let containerView = self.viewDeckController.view;
-    double fractionComplete = 0;
-    CGFloat distanceCovered = 0;
+    CGPoint point = [recognizer locationInView:containerView];
     CGFloat overallDistance = CGRectGetMinX(self.finalSideFrame) - CGRectGetMinX(self.initialSideFrame);
-    
-    if (!_flags.appearingTransition && [recognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
-        let *panRecognizer = (UIPanGestureRecognizer *)recognizer;
-        distanceCovered = [panRecognizer translationInView:containerView].x;
-    } else {
-        CGPoint point = [recognizer locationInView:containerView];
-        CGFloat relevantEdgePositionForDistanceCovered = (CGRectGetMinX(self.initialSideFrame) < CGRectGetMinX(self.finalSideFrame) ? CGRectGetMaxX(self.initialSideFrame) : CGRectGetMinX(self.initialSideFrame));
-        distanceCovered = point.x - relevantEdgePositionForDistanceCovered;
-    }
-    
-    fractionComplete = IILimitFraction(distanceCovered / overallDistance);
+    CGFloat relevantEdgePositionForDistanceCovered = (CGRectGetMinX(self.initialSideFrame) < CGRectGetMinX(self.finalSideFrame) ? CGRectGetMaxX(self.initialSideFrame) : CGRectGetMinX(self.initialSideFrame));
+    CGFloat distanceCovered = point.x - relevantEdgePositionForDistanceCovered;
+    double fractionComplete = IILimitFraction(distanceCovered / overallDistance);
     [self.animator updateInteractiveTransition:self fractionCompleted:fractionComplete];
 }
 

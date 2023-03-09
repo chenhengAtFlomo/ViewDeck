@@ -61,7 +61,9 @@ NS_ASSUME_NONNULL_BEGIN
         context.centerView.frame = finalCenterFame;
         context.sideView.frame = finalSideFrame;
     } completion:^(BOOL finished) {
-        [context completeTransition];
+        if (finished) {
+            [context completeTransition];
+        }
     }];
 }
 

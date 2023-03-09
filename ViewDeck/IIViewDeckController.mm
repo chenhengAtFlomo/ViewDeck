@@ -10,7 +10,7 @@
 //  use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 //  of the Software, and to permit persons to whom the Software is furnished to do
 //  so, subject to the following conditions:
-// 
+//
 //  The above copyright notice and this permission notice shall be included in all
 //  copies or substantial portions of the Software.
 //
@@ -71,7 +71,6 @@ NSString* NSStringFromIIViewDeckSide(IIViewDeckSide side) {
 @property (nonatomic) UIScreenEdgePanGestureRecognizer *leftEdgeGestureRecognizer;
 @property (nonatomic) UIScreenEdgePanGestureRecognizer *rightEdgeGestureRecognizer;
 @property (nonatomic) UITapGestureRecognizer *decorationTapGestureRecognizer;
-@property (nonatomic) UIPanGestureRecognizer *dismissGestureRecognizer;
 
 @property (nonatomic) UIView *currentDecorationView;
 
@@ -152,7 +151,6 @@ II_DELEGATE_PROXY(IIViewDeckControllerDelegate);
     let view = self.view;
     [view addGestureRecognizer:self.leftEdgeGestureRecognizer];
     [view addGestureRecognizer:self.rightEdgeGestureRecognizer];
-    [view addGestureRecognizer:self.dismissGestureRecognizer];
 
     [self ii_exchangeViewFromController:nil toController:self.centerViewController inContainerView:self.view];
 }
@@ -229,7 +227,7 @@ II_DELEGATE_PROXY(IIViewDeckControllerDelegate);
 
 #pragma mark - Managing Transitions
 
-__unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIViewDeckSide toSide) {
+static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIViewDeckSide toSide) {
     return (fromSide == toSide) || (IIViewDeckSideIsValid(fromSide) && !IIViewDeckSideIsValid(toSide)) || (!IIViewDeckSideIsValid(fromSide) && IIViewDeckSideIsValid(toSide));
 }
 
@@ -238,19 +236,15 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
 }
 
 - (void)openSide:(IIViewDeckSide)side animated:(BOOL)animated {
-    [self openSide:side animated:animated completion:NULL];
-}
-
-- (void)openSide:(IIViewDeckSide)side animated:(BOOL)animated completion:(nullable void(^)(BOOL cancelled))completion {
-    [self openSide:side animated:animated notify:NO completion:completion];
+    [self openSide:side animated:animated notify:NO completion:NULL];
 }
 
 - (void)openSide:(IIViewDeckSide)side animated:(BOOL)animated notify:(BOOL)notify completion:(nullable void(^)(BOOL cancelled))completion {
     if (side == _openSide) {
         return;
     }
-    NSAssert(self->_flags.isInSideChange == NO, @"A side change is currently taking place. You can not switch the side while already transitioning from or to a side.");
-    NSAssert(IIIsAllowedTransition(_openSide, side), @"Open and close transitions are only allowed between a side and the center. You can not transition straight from one side to another side.");
+//    NSAssert(self->_flags.isInSideChange == NO, @"A side change is currently taking place. You can not switch the side while already transitioning from or to a side.");
+//    NSAssert(IIIsAllowedTransition(_openSide, side), @"Open and close transitions are only allowed between a side and the center. You can not transition straight from one side to another side.");
 
     self->_flags.isInSideChange = YES;
 
@@ -265,10 +259,10 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
         }
     }
     if (!shouldContinue) {
+        self->_flags.isInSideChange = NO;
         if (completion) {
             completion(YES);
         }
-        self->_flags.isInSideChange = NO;
         return;
     }
 
@@ -282,6 +276,8 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
         }
 
         [self updateSideGestureRecognizer];
+
+        self->_flags.isInSideChange = NO;
 
         if (completion) { completion(cancelled); }
 
@@ -300,8 +296,6 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
                 }
             }
         }
-        
-        self->_flags.isInSideChange = NO;
     };
     if (side != IIViewDeckSideNone) {
         // If we are closing, the current side is still visible until it is fully closed,
@@ -325,11 +319,7 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
 }
 
 - (void)closeSide:(BOOL)animated {
-    [self closeSide:animated completion:NULL];
-}
-
-- (void)closeSide:(BOOL)animated completion:(nullable void(^)(BOOL cancelled))completion {
-    [self openSide:IIViewDeckSideNone animated:animated notify:NO completion:completion];
+    [self closeSide:animated notify:NO completion:NULL];
 }
 
 - (void)closeSide:(BOOL)animated notify:(BOOL)notify completion:(nullable void(^)(BOOL cancelled))completion {
@@ -368,16 +358,6 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
     return _rightEdgeGestureRecognizer;
 }
 
-- (UIPanGestureRecognizer *)dismissGestureRecognizer {
-    if (_dismissGestureRecognizer) {
-        return _dismissGestureRecognizer;
-    }
-    
-    _dismissGestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(interactiveTransitionRecognized:)];
-    _dismissGestureRecognizer.delegate = self;
-    return _dismissGestureRecognizer;
-}
-
 - (UITapGestureRecognizer *)decorationTapGestureRecognizer {
     if (_decorationTapGestureRecognizer) {
         return _decorationTapGestureRecognizer;
@@ -399,8 +379,6 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
                 side = IIViewDeckSideLeft;
             } else if (recognizer == self.rightEdgeGestureRecognizer) {
                 side = IIViewDeckSideRight;
-            } else if (recognizer == self.dismissGestureRecognizer) {
-                side = IIViewDeckSideNone;
             } else {
                 NSAssert(NO, @"A gesture recognizer (%@) triggered an interactive view transition that is not controlled by this istance of %@, (%@).", recognizer, NSStringFromClass(self.class), self);
                 return;
@@ -441,8 +419,8 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
 - (void)updateSideGestureRecognizer {
     BOOL panningEnabled = self.isPanningEnabled;
     self.leftEdgeGestureRecognizer.enabled = (panningEnabled && self.leftViewController && self.openSide == IIViewDeckSideNone);
-    self.rightEdgeGestureRecognizer.enabled = (panningEnabled && self.rightViewController && self.openSide == IIViewDeckSideNone);
-    self.dismissGestureRecognizer.enabled = (panningEnabled && self.openSide != IIViewDeckSideNone);
+//    self.rightEdgeGestureRecognizer.enabled = (panningEnabled && self.rightViewController && self.openSide == IIViewDeckSideNone);
+    self.rightEdgeGestureRecognizer.enabled = NO;
     self.decorationTapGestureRecognizer.enabled = (self.openSide != IIViewDeckSideNone);
 }
 
@@ -461,13 +439,6 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
     return [self.delegate viewDeckController:self shouldStartPanningToSide:side];
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRequireFailureOfGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
-    if ([otherGestureRecognizer isKindOfClass:NSClassFromString(@"_UISwipeActionPanGestureRecognizer")]) {
-        return YES;
-    }
-    return NO;
-}
-
 
 
 #pragma mark - Customizing Transitions
@@ -482,7 +453,16 @@ __unused static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIVie
     }
 
     let decorationView = [[UIView alloc] initWithFrame:self.view.bounds];
-    decorationView.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.75];
+    UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    UIVisualEffectView *visualEffectView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    visualEffectView.backgroundColor = [UIColor colorWithWhite:0.0f alpha:0.8f];
+    visualEffectView.frame = decorationView.bounds;
+    visualEffectView.alpha = 0.8f;
+    UIView *view = [UIView new];
+    view.frame = visualEffectView.contentView.bounds;
+    view.backgroundColor = [UIColor colorWithWhite:0.0f alpha:0.9f];
+    [visualEffectView.contentView addSubview:view];
+    [decorationView addSubview:visualEffectView];
     [decorationView addGestureRecognizer:self.decorationTapGestureRecognizer];
     self.currentDecorationView = decorationView;
     return decorationView;
