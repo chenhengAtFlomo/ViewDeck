@@ -120,7 +120,7 @@ NS_ASSUME_NONNULL_BEGIN
     let containerView = self.viewDeckController.view;
     let decorationView = self.decorationView;
 
-    decorationView.frame = containerView.bounds;
+//    decorationView.frame = containerView.bounds;
     decorationView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
     self.centerView.frame = self.initialCenterFrame;
@@ -184,12 +184,28 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)updateInteractiveTransition:(UIGestureRecognizer *)recognizer {
     let containerView = self.viewDeckController.view;
-    CGPoint point = [recognizer locationInView:containerView];
+    double fractionComplete = 0;
+    CGFloat distanceCovered = 0;
     CGFloat overallDistance = CGRectGetMinX(self.finalSideFrame) - CGRectGetMinX(self.initialSideFrame);
-    CGFloat relevantEdgePositionForDistanceCovered = (CGRectGetMinX(self.initialSideFrame) < CGRectGetMinX(self.finalSideFrame) ? CGRectGetMaxX(self.initialSideFrame) : CGRectGetMinX(self.initialSideFrame));
-    CGFloat distanceCovered = point.x - relevantEdgePositionForDistanceCovered;
-    double fractionComplete = IILimitFraction(distanceCovered / overallDistance);
+    
+    if (!_flags.appearingTransition && [recognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
+        let *panRecognizer = (UIPanGestureRecognizer *)recognizer;
+        distanceCovered = [panRecognizer translationInView:containerView].x;
+    } else {
+        CGPoint point = [recognizer locationInView:containerView];
+        CGFloat relevantEdgePositionForDistanceCovered = (CGRectGetMinX(self.initialSideFrame) < CGRectGetMinX(self.finalSideFrame) ? CGRectGetMaxX(self.initialSideFrame) : CGRectGetMinX(self.initialSideFrame));
+        distanceCovered = point.x - relevantEdgePositionForDistanceCovered;
+    }
+    
+    fractionComplete = IILimitFraction(distanceCovered / overallDistance);
     [self.animator updateInteractiveTransition:self fractionCompleted:fractionComplete];
+//    let containerView = self.viewDeckController.view;
+//    CGPoint point = [recognizer locationInView:containerView];
+//    CGFloat overallDistance = CGRectGetMinX(self.finalSideFrame) - CGRectGetMinX(self.initialSideFrame);
+//    CGFloat relevantEdgePositionForDistanceCovered = (CGRectGetMinX(self.initialSideFrame) < CGRectGetMinX(self.finalSideFrame) ? CGRectGetMaxX(self.initialSideFrame) : CGRectGetMinX(self.initialSideFrame));
+//    CGFloat distanceCovered = point.x - relevantEdgePositionForDistanceCovered;
+//    double fractionComplete = IILimitFraction(distanceCovered / overallDistance);
+//    [self.animator updateInteractiveTransition:self fractionCompleted:fractionComplete];
 }
 
 - (void)endInteractiveTransition:(UIGestureRecognizer *)recognizer {
