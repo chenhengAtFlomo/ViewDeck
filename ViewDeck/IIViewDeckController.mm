@@ -242,7 +242,7 @@ static inline BOOL IIIsAllowedTransition(IIViewDeckSide fromSide, IIViewDeckSide
 }
 
 - (void)openSide:(IIViewDeckSide)side animated:(BOOL)animated completion:(nullable void(^)(BOOL cancelled))completion {
-    [self openSide:side animated:animated notify:NO completion:NULL];
+    [self openSide:side animated:animated notify:NO completion:completion];
 }
 
 - (void)openSide:(IIViewDeckSide)side animated:(BOOL)animated notify:(BOOL)notify completion:(nullable void(^)(BOOL cancelled))completion {
